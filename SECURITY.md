@@ -27,7 +27,8 @@ RTK is a CLI tool that executes shell commands and handles user input. PRs from 
 
 ## Automated Security Checks
 
-Every PR triggers our [`security-check.yml`](.github/workflows/security-check.yml) workflow:
+The [`ci.yml`](.github/workflows/ci.yml) workflow includes a security scan for
+pull requests targeting `develop` or `master`. It runs after Clippy passes:
 
 1. **Dependency audit** (`cargo audit`) - Detects known CVEs
 2. **Critical files alert** - Flags modifications to high-risk files
@@ -37,9 +38,10 @@ Every PR triggers our [`security-check.yml`](.github/workflows/security-check.ym
    - Network operations (`reqwest::`, `std::net::`)
    - Unsafe code blocks
    - Panic-inducing patterns (`.unwrap()` in production)
-4. **Clippy security lints** - Enforces Rust best practices
+4. **Clippy security lints** - Reports additional lint findings
 
 Results are posted in the PR's GitHub Actions summary.
+Dependency audit and additional security lint findings are warnings in this job.
 
 ---
 
@@ -48,15 +50,15 @@ Results are posted in the PR's GitHub Actions summary.
 The following files are considered **high-risk** and trigger mandatory 2-reviewer approval:
 
 ### Tier 1: Shell Execution & System Interaction
-- **`src/runner.rs`** - Shell command execution engine (primary injection vector)
-- **`src/summary.rs`** - Command output aggregation (data exfiltration risk)
-- **`src/tracking.rs`** - SQLite database operations (privacy/telemetry concerns)
+- **`src/core/runner.rs`** - Shell command execution engine (primary injection vector)
+- **`src/cmds/system/summary.rs`** - Command output aggregation (data exfiltration risk)
+- **`src/core/tracking.rs`** - SQLite database operations (privacy/telemetry concerns)
 - **`src/discover/registry.rs`** - Rewrite logic for all commands (command injection risk via rewrite rules)
-- **`hooks/rtk-rewrite.sh`** / **`.claude/hooks/rtk-rewrite.sh`** - Thin delegator hook (executes in Claude Code context, intercepts all commands)
+- **`hooks/claude/rtk-rewrite.sh`** / **`.claude/hooks/rtk-rewrite.sh`** - Thin delegator hook (executes in Claude Code context, intercepts all commands)
 
 ### Tier 2: Input Validation
-- **`src/pnpm_cmd.rs`** - Package name validation (prevents injection via malicious names)
-- **`src/container.rs`** - Docker/container operations (privilege escalation risk)
+- **`src/cmds/js/pnpm_cmd.rs`** - Package name validation (prevents injection via malicious names)
+- **`src/cmds/cloud/container.rs`** - Docker/container operations (privilege escalation risk)
 
 ### Tier 3: Supply Chain & CI/CD
 - **`Cargo.toml`** - Dependency manifest (typosquatting, backdoored crates)
@@ -73,7 +75,7 @@ The following files are considered **high-risk** and trigger mandatory 2-reviewe
 
 ### For External Contributors
 
-1. **Submit PR** → Automated `security-check.yml` runs
+1. **Submit PR** → The security job in `ci.yml` runs after Clippy passes
 2. **Review automated results** → Fix any flagged issues
 3. **Manual review** → Maintainer performs comprehensive security audit
 4. **Approval** → Merge (or request for changes)
@@ -89,8 +91,9 @@ Use the comprehensive security review process:
 # Manual review (without Claude):
 gh pr view <PR_NUMBER>
 gh pr diff <PR_NUMBER> > /tmp/pr.diff
-bash scripts/detect-dangerous-patterns.sh /tmp/pr.diff
 ```
+
+Review the Security Scan summary in the PR's CI run alongside the patch.
 
 **Review checklist:**
 - [ ] No critical files modified OR changes justified + reviewed by 2 maintainers
