@@ -21,7 +21,9 @@ fn extract_attr_value(
             continue;
         }
 
-        if let Ok(value) = attr.decode_and_unescape_value(reader.decoder()) {
+        if let Ok(value) =
+            attr.decoded_and_normalized_value(quick_xml::XmlVersion::Implicit1_0, reader.decoder())
+        {
             return Some(value.into_owned());
         }
     }
@@ -212,7 +214,6 @@ fn parse_trx_content(content: &str) -> Option<TestSummary> {
     }
 
     let mut reader = Reader::from_str(content);
-    reader.config_mut().trim_text(true);
     let mut buf = Vec::new();
     let mut summary = TestSummary::default();
     let mut saw_test_run = false;
@@ -303,6 +304,14 @@ fn parse_trx_content(content: &str) -> Option<TestSummary> {
                 match capture_field {
                     Some(CaptureField::Message) => message_buf.push_str(&text),
                     Some(CaptureField::StackTrace) => stack_buf.push_str(&text),
+                    None => {}
+                }
+            }
+            Ok(Event::GeneralRef(e)) if in_failed_result => {
+                let reference = format!("&{};", String::from_utf8_lossy(e.as_ref()));
+                match capture_field {
+                    Some(CaptureField::Message) => message_buf.push_str(&reference),
+                    Some(CaptureField::StackTrace) => stack_buf.push_str(&reference),
                     None => {}
                 }
             }
@@ -456,6 +465,27 @@ mod tests {
         assert_eq!(summary.total, 10);
         assert_eq!(summary.passed, 7);
         assert_eq!(summary.failed, 3);
+    }
+
+    #[test]
+    fn test_parse_trx_content_preserves_references_and_adjacent_spaces() {
+        let trx = r#"<TestRun><Results>
+<UnitTestResult outcome="Failed" testName="A &amp; B"><Output><ErrorInfo>
+<Message>Expected &lt;value&gt; &amp; &#65; but got <![CDATA[<other>]]>.</Message>
+<StackTrace>at A &amp; B
+at line 42</StackTrace>
+</ErrorInfo></Output></UnitTestResult>
+</Results></TestRun>"#;
+        let summary = parse_trx_content(trx).expect("valid TRX");
+        let failure = &summary.failed_tests[0];
+        assert_eq!(failure.name, "A & B");
+        assert_eq!(
+            failure.details,
+            [
+                "Expected &lt;value&gt; &amp; &#65; but got <other>.",
+                "at A &amp; B\nat line 42",
+            ],
+        );
     }
 
     #[test]

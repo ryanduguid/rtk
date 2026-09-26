@@ -94,7 +94,8 @@ jobs:
             echo '```' >> $GITHUB_STEP_SUMMARY
             cat audit.log >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
-            echo "::warning::Dependency vulnerabilities detected - review required"
+            echo "::error::Dependency vulnerabilities detected"
+            exit 1
           fi
           echo "" >> $GITHUB_STEP_SUMMARY
 

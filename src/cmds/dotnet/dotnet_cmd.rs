@@ -628,7 +628,6 @@ fn scan_mtp_kind_in_file(path: &Path) -> MtpProjectKind {
     let mut reader = Reader::from_str(&content);
     reader.config_mut().trim_text(true);
     let mut buf = Vec::new();
-    let mut inside_mtp_element = false;
 
     loop {
         match reader.read_event_into(&mut buf) {
@@ -636,21 +635,19 @@ fn scan_mtp_kind_in_file(path: &Path) -> MtpProjectKind {
                 let name_lower = e.local_name().as_ref().to_ascii_lowercase();
                 // All project-file MTP properties run in VSTest bridge mode and require
                 // MTP-specific args to come after `--`. Only global.json MTP mode is native.
-                inside_mtp_element = matches!(
+                if matches!(
                     name_lower.as_slice(),
                     b"usemicrosofttestingplatformrunner"
                         | b"usetestingplatformrunner"
                         | b"testingplatformdotnettestsupport"
-                );
-            }
-            Ok(Event::Text(e)) if inside_mtp_element => {
-                if let Ok(text) = e.unescape()
+                ) && let Ok(text) = reader.read_text(e.name())
+                    && let Ok(text) = text.decode()
+                    && let Ok(text) = quick_xml::escape::unescape(&text)
                     && text.trim().eq_ignore_ascii_case("true")
                 {
                     return MtpProjectKind::VsTestBridge;
                 }
             }
-            Ok(Event::End(_)) => inside_mtp_element = false,
             Ok(Event::Eof) => break,
             Err(_) => break,
             _ => {}
@@ -2450,6 +2447,19 @@ mod tests {
     <UseTestingPlatformRunner>true</UseTestingPlatformRunner>
   </PropertyGroup>
 </Project>"#,
+        )
+        .expect("write csproj");
+
+        assert_eq!(scan_mtp_kind_in_file(&csproj), MtpProjectKind::VsTestBridge);
+    }
+
+    #[test]
+    fn test_scan_mtp_kind_preserves_character_references() {
+        let temp_dir = tempfile::tempdir().expect("create temp dir");
+        let csproj = temp_dir.path().join("MyProject.csproj");
+        fs::write(
+            &csproj,
+            "<Project><PropertyGroup><UseTestingPlatformRunner>tr&#117;e</UseTestingPlatformRunner></PropertyGroup></Project>",
         )
         .expect("write csproj");
 
