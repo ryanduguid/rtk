@@ -103,7 +103,7 @@ jobs:
       - name: Critical files check
         run: |
           echo "### Critical Files Modified" >> $GITHUB_STEP_SUMMARY
-          CRITICAL=$(git diff --name-only origin/master...HEAD | grep -E "(runner|summary|tracking|init|pnpm_cmd|container)\.rs|Cargo\.toml|workflows/.*\.yml" || true)
+          CRITICAL=$(git diff --name-only origin/master...HEAD | grep -E '(^|/)(runner|summary|tracking|init|pnpm_cmd|container)\.rs$|^src/discover/registry\.rs$|^(hooks/claude|\.claude/hooks)/rtk-rewrite\.sh$|^Cargo\.toml$|^\.github/workflows/.*\.ya?ml$' || true)
           if [ -n "$CRITICAL" ]; then
             echo "**HIGH RISK**: The following critical files were modified:" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
