@@ -47,7 +47,10 @@ Dependency audit and additional security lint findings are warnings in this job.
 
 ## Critical Files Requiring Enhanced Review
 
-The following files are considered **high-risk** and trigger mandatory 2-reviewer approval:
+Changes to the following **high-risk** files require approval from two reviewers.
+This is a manual review policy. The CI pattern matcher covers only some of these
+paths: it does not flag the rewrite registry or hook scripts, and it does not
+enforce reviewer approval.
 
 ### Tier 1: Shell Execution & System Interaction
 - **`src/core/runner.rs`** - Shell command execution engine (primary injection vector)
@@ -56,8 +59,8 @@ The following files are considered **high-risk** and trigger mandatory 2-reviewe
 - **`src/discover/registry.rs`** - Rewrite logic for all commands (command injection risk via rewrite rules)
 - **`hooks/claude/rtk-rewrite.sh`** / **`.claude/hooks/rtk-rewrite.sh`** - Thin delegator hook (executes in Claude Code context, intercepts all commands)
 
-### Tier 2: Input Validation
-- **`src/cmds/js/pnpm_cmd.rs`** - Package name validation (prevents injection via malicious names)
+### Tier 2: Package and Container Commands
+- **`src/cmds/js/pnpm_cmd.rs`** - Forwards arguments to pnpm subprocesses; does not validate package names
 - **`src/cmds/cloud/container.rs`** - Docker/container operations (privilege escalation risk)
 
 ### Tier 3: Supply Chain & CI/CD
