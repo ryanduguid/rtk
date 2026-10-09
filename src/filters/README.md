@@ -98,8 +98,8 @@ flowchart TD
     end
 
     G --> H & J & L & R
-    style G fill:#7851A9,stroke:#FFFFF0,stroke-width:2px,color:#FFFFF0
-    style W fill:#7851A9,stroke:#FFFFF0,stroke-width:2px,color:#FFFFF0
+    style G fill:#990024,stroke:#FFFFF0,stroke-width:2px,color:#FFFFF0
+    style W fill:#990024,stroke:#FFFFF0,stroke-width:2px,color:#FFFFF0
 ```
 
 ## Filter lookup priority
@@ -117,7 +117,7 @@ flowchart LR
     P3{"3. BUILTIN_TOML\n(binary)"}
     P3 -->|"match"| WIN
     P3 -->|"no match"| P4[["exec raw (passthrough)"]]
-    style WIN fill:#7851A9,stroke:#FFFFF0,stroke-width:2px,color:#FFFFF0
+    style WIN fill:#990024,stroke:#FFFFF0,stroke-width:2px,color:#FFFFF0
 ```
 
 First match wins. A project filter with the same name as a built-in shadows the built-in and triggers a warning:
